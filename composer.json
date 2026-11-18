@@ -1,0 +1,27 @@
+{
+    "name": "tornado-engine/notifications",
+    "description": "Tornado Engine core-module: the notification bell in the menu bar, with modules still to be set up.",
+    "type": "library",
+    "license": "MIT",
+    "require": {
+        "php": "^8.4",
+        "illuminate/support": "^13.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "TornadoEngine\\Notifications\\": "src/"
+        }
+    },
+    "extra": {
+        "tornado": {
+            "name": "Notifications",
+            "prompt": "The bell in the menu bar. Add notifications with app(\\TornadoEngine\\Notifications\\Notifications::class)->source('key', fn ($user) => [['title' => ..., 'text' => ..., 'url' => ...]]).",
+            "core": ">=0.24",
+            "core-module": true,
+            "provider": "TornadoEngine\\Notifications\\NotificationsServiceProvider"
+        },
+        "branch-alias": {
+            "dev-main": "0.1.x-dev"
+        }
+    }
+}
