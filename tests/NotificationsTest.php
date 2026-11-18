@@ -38,6 +38,9 @@ class NotificationsTest extends TestCase
             ->assertSee(route('notifications.setup', ['package' => 'tornado-engine/github']), false);
 
         Setting::put('github.client_id', 'Iv1.abc');
+        Setting::putSecret('github.token', 'gho_test');
+        Setting::put('github.login', 'someone');
+        Setting::putSecret('github.packagist_token', 'pk-test');
         cache()->flush();
         $this->actingAs($this->admin())->get('/dashboard')->assertDontSee('Finish setting up GitHub');
 
@@ -51,7 +54,7 @@ class NotificationsTest extends TestCase
         $this->actingAs($admin)->get('/dashboard')->assertSee('Hello '.$admin->id);
     }
 
-    public function test_setting_up_a_module_opens_the_modules_it_needs_first_then_the_dashboard(): void
+    public function test_setting_up_a_module_opens_the_modules_it_needs_first(): void
     {
         $admin = $this->admin();
         $runner = app(ModuleRegistry::class)->all()['tornado-engine/gam-runner'];
@@ -65,7 +68,7 @@ class NotificationsTest extends TestCase
         $this->actingAs($admin)->from('/administration/gam')->post('/test/save')->assertRedirect('/administration/gam');
 
         $this->gamReady = true;
-        $this->actingAs($admin)->from('/administration/gam')->post('/test/save')->assertRedirect(route('dashboard'))->assertSessionHas('setup_status', 'GAM is set up.');
+        $this->actingAs($admin)->from('/administration/gam')->post('/test/save')->assertRedirect(url('/administration/gam'))->assertSessionHas('setup_status', 'GAM is set up.');
         $this->assertNull(session('setup.chain'));
         $this->assertSame([], app(Setup::class)->chain($runner));
     }
