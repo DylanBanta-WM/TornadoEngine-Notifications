@@ -6,8 +6,10 @@ use App\Models\Setting;
 use App\Models\User;
 use App\Modules\ModuleRegistry;
 use App\Modules\Setup;
+use App\Patches\Patches;
 use App\Updates\Rebuild;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
@@ -83,5 +85,21 @@ class NotificationsTest extends TestCase
 
         $this->assertContains('The server needs a rebuild', array_column(app(Notifications::class)->for($admin), 'title'));
         $this->assertNotContains('The server needs a rebuild', array_column(app(Notifications::class)->for(User::factory()->create()), 'title'));
+    }
+
+    public function test_the_bell_says_when_a_patch_is_off(): void
+    {
+        $base = sys_get_temp_dir().'/bell-patch-'.uniqid();
+        File::ensureDirectoryExists("{$base}/local/patches");
+        file_put_contents("{$base}/local/patches/core.patch", "diff --git a/app/X.php b/app/X.php\n");
+        file_put_contents("{$base}/local/patches/state.json", json_encode(['core' => ['state' => 'off']]));
+        $this->app->instance(Patches::class, new Patches($base));
+
+        try {
+            $this->assertContains('A patch is off', array_column(app(Notifications::class)->for($this->admin()), 'title'));
+            $this->assertNotContains('A patch is off', array_column(app(Notifications::class)->for(User::factory()->create()), 'title'));
+        } finally {
+            File::deleteDirectory($base);
+        }
     }
 }
