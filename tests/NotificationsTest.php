@@ -6,6 +6,7 @@ use App\Models\Setting;
 use App\Models\User;
 use App\Modules\ModuleRegistry;
 use App\Modules\Setup;
+use App\Updates\Rebuild;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Route;
@@ -71,5 +72,16 @@ class NotificationsTest extends TestCase
         $this->actingAs($admin)->from('/administration/gam')->post('/test/save')->assertRedirect(url('/administration/gam'))->assertSessionHas('setup_status', 'GAM is set up.');
         $this->assertNull(session('setup.chain'));
         $this->assertSame([], app(Setup::class)->chain($runner));
+    }
+
+    public function test_the_bell_says_when_the_server_needs_a_rebuild(): void
+    {
+        $admin = $this->admin();
+        $this->assertNotContains('The server needs a rebuild', array_column(app(Notifications::class)->for($admin), 'title'));
+
+        Rebuild::markNeeded();
+
+        $this->assertContains('The server needs a rebuild', array_column(app(Notifications::class)->for($admin), 'title'));
+        $this->assertNotContains('The server needs a rebuild', array_column(app(Notifications::class)->for(User::factory()->create()), 'title'));
     }
 }
