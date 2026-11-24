@@ -63,15 +63,15 @@ class NotificationsTest extends TestCase
         $runner = app(ModuleRegistry::class)->all()['tornado-engine/gam-runner'];
 
         // GAM Runner needs GAM, which isn't set up; GAM Runner has nothing of its own to set up.
-        $this->actingAs($admin)->get(route('notifications.setup', ['package' => 'tornado-engine/gam-runner']))->assertRedirect(url('/administration/gam'));
+        $this->actingAs($admin)->get(route('notifications.setup', ['package' => 'tornado-engine/gam-runner']))->assertRedirect(url('/settings/gam'));
         $this->assertSame(['tornado-engine/gam'], session('setup.chain'));
-        $this->actingAs($admin)->get('/administration/gam')->assertSee('Set up GAM, then save to finish.');
+        $this->actingAs($admin)->get('/settings/gam')->assertSee('Set up GAM, then save to finish.');
 
         // Saved, but GAM still isn't set up: stay.
-        $this->actingAs($admin)->from('/administration/gam')->post('/test/save')->assertRedirect('/administration/gam');
+        $this->actingAs($admin)->from('/settings/gam')->post('/test/save')->assertRedirect('/settings/gam');
 
         $this->gamReady = true;
-        $this->actingAs($admin)->from('/administration/gam')->post('/test/save')->assertRedirect(url('/administration/gam'))->assertSessionHas('setup_status', 'GAM is set up.');
+        $this->actingAs($admin)->from('/settings/gam')->post('/test/save')->assertRedirect(url('/settings/gam'))->assertSessionHas('setup_status', 'GAM is set up.');
         $this->assertNull(session('setup.chain'));
         $this->assertSame([], app(Setup::class)->chain($runner));
     }
