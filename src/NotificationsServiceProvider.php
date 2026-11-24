@@ -6,8 +6,8 @@ use App\Layout\Navbar;
 use App\Models\User;
 use App\Modules\Module;
 use App\Modules\Setup;
-use App\Patches\Patches;
 use App\Updates\Rebuild;
+use App\Updates\UpdateJob;
 use Illuminate\Support\ServiceProvider;
 
 class NotificationsServiceProvider extends ServiceProvider
@@ -30,12 +30,16 @@ class NotificationsServiceProvider extends ServiceProvider
             'url' => route('administration.tab', ['tab' => 'updates']),
         ]]);
 
-        // A district's patch (Core's App\Patches) that an update no longer fits: the update happened, the patch is off.
-        $notifications->source('patches', fn (User $user) => ! $user->can('administration') || ! class_exists(Patches::class) ? [] : array_map(fn ($target) => [
-            'title' => __('A patch is off'),
-            'text' => __('The patch for :target doesn\'t fit its new version. Redo it, or remove it.', ['target' => $target === 'core' ? __('Core') : $target]),
-            'url' => route('administration.tab', ['tab' => 'updates']),
-        ], app(Patches::class)->off()));
+        // An update that waits because the district's changes (to Core or a customized module) clash with it.
+        $notifications->source('clashes', fn (User $user) => ! $user->can('administration') ? [] : UpdateJob::whereIn('kind', ['core', 'module'])
+            ->where('status', 'failed')->where('log', 'like', '%clash with%')->latest('id')->take(20)->get()
+            ->unique(fn ($job) => $job->kind.$job->package)
+            ->filter(fn ($job) => ! UpdateJob::where('kind', $job->kind)->where('package', $job->package)->where('id', '>', $job->id)->where('status', 'done')->exists())
+            ->map(fn ($job) => [
+                'title' => __('An update is waiting'),
+                'text' => __('Your changes clash with :name :version. Settings → Updates has what to do.', ['name' => $job->package ?? __('Core'), 'version' => $job->version]),
+                'url' => route('administration.tab', ['tab' => 'updates']),
+            ])->values()->all());
 
         // Modules that need their settings filled in before they work.
         $notifications->source('setup', fn (User $user) => ! $user->can('administration') ? [] : array_map(fn (Module $module) => [

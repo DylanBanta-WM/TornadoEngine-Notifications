@@ -6,10 +6,9 @@ use App\Models\Setting;
 use App\Models\User;
 use App\Modules\ModuleRegistry;
 use App\Modules\Setup;
-use App\Patches\Patches;
 use App\Updates\Rebuild;
+use App\Updates\UpdateJob;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
@@ -87,19 +86,15 @@ class NotificationsTest extends TestCase
         $this->assertNotContains('The server needs a rebuild', array_column(app(Notifications::class)->for(User::factory()->create()), 'title'));
     }
 
-    public function test_the_bell_says_when_a_patch_is_off(): void
+    public function test_the_bell_says_when_an_update_waits_for_a_clash(): void
     {
-        $base = sys_get_temp_dir().'/bell-patch-'.uniqid();
-        File::ensureDirectoryExists("{$base}/local/patches");
-        file_put_contents("{$base}/local/patches/core.patch", "diff --git a/app/X.php b/app/X.php\n");
-        file_put_contents("{$base}/local/patches/state.json", json_encode(['core' => ['state' => 'off']]));
-        $this->app->instance(Patches::class, new Patches($base));
+        $job = UpdateJob::queue('core', '9.9.9');
+        $job->update(['status' => 'failed', 'log' => "Your district's changes clash with v9.9.9, so it wasn't updated."]);
 
-        try {
-            $this->assertContains('A patch is off', array_column(app(Notifications::class)->for($this->admin()), 'title'));
-            $this->assertNotContains('A patch is off', array_column(app(Notifications::class)->for(User::factory()->create()), 'title'));
-        } finally {
-            File::deleteDirectory($base);
-        }
+        $this->assertContains('An update is waiting', array_column(app(Notifications::class)->for($this->admin()), 'title'));
+        $this->assertNotContains('An update is waiting', array_column(app(Notifications::class)->for(User::factory()->create()), 'title'));
+
+        UpdateJob::queue('core', '9.9.9')->update(['status' => 'done']);
+        $this->assertNotContains('An update is waiting', array_column(app(Notifications::class)->for($this->admin()), 'title'));
     }
 }
